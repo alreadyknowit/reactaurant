@@ -1,0 +1,120 @@
+import "./App.css";
+import Navi from "./Navi";
+import CategoryList from "./CategoryList";
+import ProductList from "./ProductList";
+import { Col, Row, Container } from "reactstrap";
+import React, { Component } from "react";
+import alertify from "alertifyjs";
+import { Routes, Route } from "react-router-dom";
+import CartList from "./CartList";
+import NotFound from "./NotFound";
+class App extends Component {
+  state = {
+    currentCategory: null,
+    products: [],
+    isLoaded: false,
+    cart: [],
+  };
+
+  componentDidMount() {
+    this.getProducts();
+  }
+
+  getProducts = async (category) => {
+    let url = "http://localhost:3004/products";
+    if (category) url += "?categoryId=" + category.id;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) =>
+        this.setState({
+          isLoaded: true,
+          products: data,
+        })
+      );
+  };
+
+  addToCart = (product) => {
+    let newCart = this.state.cart;
+    let added = newCart.find((ct) => ct.product.id === product.id);
+    if (added) {
+      added.quantity++;
+    } else {
+      newCart.push({ product: product, quantity: 1 });
+    }
+    this.setState({ cart: newCart });
+    alertify.set("notifier", "position", "top-left");
+    alertify.success(product.productName + " added successfully!", 1);
+  };
+
+  clearProducts = () => {
+    this.setState({ cart: [] });
+    alertify.error("Cart cleared");
+  };
+
+  removeSingleItem = (cart) => {
+    let array = this.state.cart;
+    const index = array.indexOf(cart);
+    if (index > -1) {
+      array.splice(index, 1);
+    }
+    this.setState({ cart: array });
+    alertify.error(cart.product.productName + " removed from cart", 1);
+  };
+
+  changeCategory = (category) => {
+    this.setState({ currentCategory: category, isLoaded: false });
+    this.getProducts(category);
+  };
+  render() {
+    return (
+      <div className="App">
+        <Routes>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Container>
+          <Navi
+            removeSingleItem={this.removeSingleItem}
+            clearProducts={this.clearProducts}
+            cart={this.state.cart}
+          ></Navi>
+
+          <Row>
+            <Col xs="3">
+              <CategoryList
+                onClickColor={this.state.color}
+                currentCategory={this.state.currentCategory}
+                changeCategory={this.changeCategory}
+              ></CategoryList>
+            </Col>
+            <Col xs="9">
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <ProductList
+                      addToCart={this.addToCart}
+                      isLoaded={this.state.isLoaded}
+                      products={this.state.products}
+                    ></ProductList>
+                  }
+                />
+                <Route
+                  path="/cart"
+                  element={
+                    <CartList
+                      removeSingleItem={this.removeSingleItem}
+                      cart={this.state.cart}
+                      clearProducts={this.clearProducts}
+                    />
+                  }
+                />
+              </Routes>
+            </Col>
+          </Row>
+        </Container>
+      </div>
+    );
+  }
+}
+export default App;
